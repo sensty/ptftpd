@@ -31,12 +31,13 @@ interval option from RFC2349.
 """
 
 import errno
+import fcntl
 import logging
-import netifaces
 import os
 import socket
-import subprocess
 import stat
+import struct
+import subprocess
 import sys
 import threading
 import time
@@ -62,14 +63,23 @@ _DEFAULT_UDP_DATAGRAM_SIZE = 508
 
 
 def get_ip_config_for_iface(iface):
-    """Retrieve and return the IP address/netmask of the given interface."""
-    if iface not in netifaces.interfaces():
-        raise TFTPServerConfigurationError(
-                'Unknown network interface {}'.format(iface))
+    """Retrieve and return the IP address/netmask of the given interface.
 
-    details = netifaces.ifaddresses(iface)
-    inet = details[netifaces.AF_INET][0]
-    return inet['addr'], inet['netmask']
+    Constants from https://github.com/torvalds/linux/blob/v6.8/include/uapi/linux/sockios.h#L62
+    """
+    SIOCGIFADDR = 0x8915
+    SIOCGIFNETMASK = 0x891B
+    iface_b = struct.pack("256s", iface.encode()[:15])
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        ip = socket.inet_ntoa(fcntl.ioctl(s, SIOCGIFADDR, iface_b)[20:24])
+        nm = socket.inet_ntoa(fcntl.ioctl(s, SIOCGIFNETMASK, iface_b)[20:24])
+    except OSError as exc:
+        if exc.errno != errno.ENODEV:
+            raise
+        raise TFTPServerConfigurationError(
+                'Unknown network interface {}'.format(iface)) from exc
+    return ip, nm
 
 
 def get_max_udp_datagram_size():

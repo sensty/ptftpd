@@ -26,9 +26,6 @@ with open('ptftplib/version.py') as f:
 with open('README.rst') as readme:
     long_description = readme.read()
 
-with open('requirements.txt') as f:
-    requirements = [line.strip() for line in f.readlines()]
-
 setup(
     name=name,  # noqa
     version=version,  # noqa
@@ -38,7 +35,7 @@ setup(
     license='GNU General Public License v2',
     long_description=long_description,
     zip_safe=True,
-    install_requires=requirements,
+    install_requires=[],
     packages=find_packages(),
     entry_points={
         'console_scripts':
